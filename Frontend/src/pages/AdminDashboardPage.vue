@@ -15,9 +15,6 @@
       <!-- Header & Branch Filter Control -->
       <div class="row items-center justify-between q-mb-md">
         <div>
-          <div class="text-h6 text-weight-bold text-dark">
-            {{ t('nav.admin.titleBusinessDashboard') }}
-          </div>
           <div class="text-caption text-grey-6">
             {{ t('adminWork.dashboard.businessSubtitle') }}
           </div>
@@ -34,9 +31,8 @@
             dense
             outlined
             rounded
-            class="branch-select"
+            class="branch-select shadow-1"
             bg-color="white"
-            @update:model-value="onBranchChange"
           >
             <template v-slot:prepend>
               <q-icon name="business" color="primary" size="18px" />
@@ -56,75 +52,91 @@
               </q-avatar>
               <div>
                 <div class="text-caption text-grey-7">{{ t('adminWork.workList.kpiTotalJobs') }}</div>
-                <div class="text-h6 text-weight-bold text-dark">{{ dashboard.totalProjects }}</div>
+                <div class="text-h6 text-weight-bold text-dark">
+                  {{ dashboard.totalProjects }}
+                  <span class="text-caption text-grey-6 text-weight-normal">{{ t('adminWork.dashboard.projectsUnit') }}</span>
+                </div>
               </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <!-- 1.2 กำลังดำเนินการ -->
+        <!-- 1.2 คิวงานนัดตรวจเดือนนี้ -->
         <div class="col-6 col-md-3 card-stagger">
           <q-card flat bordered class="metric-card bg-white shadow-1">
             <q-card-section class="q-pa-sm row items-center no-wrap">
-              <q-avatar size="36px" class="bg-indigo-1 text-indigo-9 q-mr-sm" style="border-radius: 8px;">
-                <q-icon name="engineering" size="20px" />
+              <q-avatar size="36px" class="bg-amber-1 text-amber-9 q-mr-sm" style="border-radius: 8px;">
+                <q-icon name="event_available" size="20px" />
               </q-avatar>
               <div>
-                <div class="text-caption text-grey-7">{{ t('adminWork.workList.kpiActive') }}</div>
-                <div class="text-h6 text-weight-bold text-dark">{{ dashboard.inProgress }}</div>
+                <div class="text-caption text-grey-7">{{ t('adminWork.dashboard.scheduledThisMonthMetric') }}</div>
+                <div class="text-h6 text-weight-bold text-dark">
+                  {{ dashboard.scheduledThisMonth || 0 }}
+                  <span class="text-caption text-grey-6 text-weight-normal">{{ t('adminWork.dashboard.roundsUnit') }}</span>
+                </div>
               </div>
             </q-card-section>
           </q-card>
         </div>
 
-        <!-- 1.3 อัตราการปิดงานสำเร็จ -->
-        <div class="col-6 col-md-3 card-stagger">
-          <q-card flat bordered class="metric-card bg-white shadow-1">
-            <q-card-section class="q-pa-sm row items-center no-wrap">
-              <q-avatar size="36px" class="bg-green-1 text-positive q-mr-sm" style="border-radius: 8px;">
-                <q-icon name="check_circle" size="20px" />
-              </q-avatar>
-              <div>
-                <div class="text-caption text-grey-7">{{ t('adminWork.dashboard.completionRateMetric') }}</div>
-                <div class="text-h6 text-weight-bold text-positive">{{ dashboard.overallCompletionRate || 0 }}%</div>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <!-- 1.4 Defect สะสมทั้งหมด -->
+        <!-- 1.3 รอตรวจอนุมัติเล่ม -->
         <div class="col-6 col-md-3 card-stagger">
           <q-card flat bordered class="metric-card bg-white shadow-1">
             <q-card-section class="q-pa-sm row items-center no-wrap">
               <q-avatar size="36px" class="bg-orange-1 text-orange-9 q-mr-sm" style="border-radius: 8px;">
-                <q-icon name="warning_amber" size="20px" />
+                <q-icon name="pending_actions" size="20px" />
               </q-avatar>
               <div>
-                <div class="text-caption text-grey-7">{{ t('adminWork.dashboard.totalDefectsMetric') }}</div>
-                <div class="text-h6 text-weight-bold text-dark">{{ dashboard.totalDefects || 0 }}</div>
+                <div class="text-caption text-grey-7">{{ t('adminWork.dashboard.pendingApprovalMetric') }}</div>
+                <div class="text-h6 text-weight-bold text-orange-9">
+                  {{ dashboard.pendingApprovalCount || 0 }}
+                  <span class="text-caption text-grey-6 text-weight-normal">{{ t('adminWork.dashboard.jobsUnit') }}</span>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- 1.4 ส่งมอบเล่มสำเร็จ -->
+        <div class="col-6 col-md-3 card-stagger">
+          <q-card flat bordered class="metric-card bg-white shadow-1">
+            <q-card-section class="q-pa-sm row items-center no-wrap">
+              <q-avatar size="36px" class="bg-green-1 text-positive q-mr-sm" style="border-radius: 8px;">
+                <q-icon name="verified" size="20px" />
+              </q-avatar>
+              <div>
+                <div class="text-caption text-grey-7">{{ t('adminWork.dashboard.deliveredProjectsMetric') }}</div>
+                <div class="text-h6 text-weight-bold text-positive">
+                  {{ dashboard.completedCount || 0 }}
+                  <span class="text-caption text-grey-6 text-weight-normal">({{ dashboard.deliverySuccessRate || 0 }}%)</span>
+                </div>
               </div>
             </q-card-section>
           </q-card>
         </div>
       </div>
 
-      <!-- 2. Row 1: Monthly Trends Bar Chart (7) & Top Defect Categories Donut (5) -->
+      <!-- 2. Row 1: Operational Pipeline & Team Workload -->
       <div class="row q-col-gutter-md q-mb-md">
         <div class="col-12 col-lg-7 card-stagger">
-          <MonthlyTrendChart :trends="monthlyTrends" />
+          <OperationalPipelineCard :pipeline="operationalPipeline" />
         </div>
         <div class="col-12 col-lg-5 card-stagger">
-          <DefectCategoryChart :categories="topDefectCategories" />
+          <TeamWorkloadCard :team-workloads="teamWorkloads" />
         </div>
       </div>
 
-      <!-- 3. Row 2: Defect Resolution Health (7) & Team Workload (5) -->
+      <!-- 3. Row 2: Job-Centric Inspection Cockpit / Drilldown -->
       <div class="row q-col-gutter-md q-mb-md">
-        <div class="col-12 col-lg-7 card-stagger">
-          <DefectResolutionCard :resolution="overallDefectResolution" />
+        <div class="col-12 card-stagger">
+          <JobDrilldownCard :job-drilldowns="jobDrilldowns" />
         </div>
-        <div class="col-12 col-lg-5 card-stagger">
-          <TeamWorkloadCard :teamWorkloads="teamWorkloads" />
+      </div>
+
+      <!-- 4. Row 3: Monthly Trends Business Growth Chart -->
+      <div class="row q-col-gutter-md q-mb-md">
+        <div class="col-12 card-stagger">
+          <MonthlyTrendChart :trends="monthlyTrends" />
         </div>
       </div>
     </div>
@@ -132,21 +144,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { api } from 'src/boot/axios';
 import type { AxiosResponse } from 'axios';
 import { createIconSpinner } from 'src/composables/useIconSpinner';
 import MonthlyTrendChart from 'src/components/dashboard/MonthlyTrendChart.vue';
-import DefectCategoryChart from 'src/components/dashboard/DefectCategoryChart.vue';
-import DefectResolutionCard from 'src/components/dashboard/DefectResolutionCard.vue';
 import TeamWorkloadCard from 'src/components/dashboard/TeamWorkloadCard.vue';
+import JobDrilldownCard from 'src/components/dashboard/JobDrilldownCard.vue';
+import OperationalPipelineCard from 'src/components/dashboard/OperationalPipelineCard.vue';
+import { useBranchStore } from 'src/stores/useBranch';
 import type {
   MonthlyTrendItem,
   JobDefectCategoryItem,
   JobDefectResolution,
   TeamWorkloadItem,
+  JobDrilldownItem,
+  OperationalPipeline,
   BranchOption,
   DashboardStats,
 } from 'src/types/dashboard';
@@ -155,6 +170,7 @@ const chartSpinner = createIconSpinner('bar_chart');
 const $q = useQuasar();
 const { t } = useI18n();
 const error = ref<string>('');
+const branchStore = useBranchStore();
 
 const dashboard = ref<DashboardStats>({
   totalProjects: 0,
@@ -165,6 +181,11 @@ const dashboard = ref<DashboardStats>({
   construction: 0,
   totalDefects: 0,
   overallCompletionRate: 0,
+  avgCompletionScore: null,
+  scheduledThisMonth: 0,
+  pendingApprovalCount: 0,
+  completedCount: 0,
+  deliverySuccessRate: 0,
   homeStatusBreakdown: [],
   constructionStatusBreakdown: [],
 });
@@ -174,30 +195,30 @@ const monthlyTrends = ref<MonthlyTrendItem[]>([]);
 const topDefectCategories = ref<JobDefectCategoryItem[]>([]);
 const overallDefectResolution = ref<JobDefectResolution | undefined>(undefined);
 const teamWorkloads = ref<TeamWorkloadItem[]>([]);
+const jobDrilldowns = ref<JobDrilldownItem[]>([]);
+const operationalPipeline = ref<OperationalPipeline | undefined>(undefined);
 
-const selectedBranchId = ref<number | 'all'>(getStoredBranchId());
+const selectedBranchId = computed<number | 'all'>({
+  get: () => branchStore.getPageBranch('dashboard'),
+  set: (val: number | 'all') => {
+    branchStore.setPageBranch('dashboard', val);
+  },
+});
 
 const branchOptions = computed(() => [
   { label: t('common.branch.all'), value: 'all' as const },
-  ...branches.value.map((b) => ({
-    label: b.name,
-    value: b.id,
+  ...branchStore.branches.map((b) => ({
+    label: b.branchName || t('common.branch.fallbackName', { id: b.branchId }),
+    value: b.branchId,
   })),
 ]);
 
-function getStoredBranchId(): number | 'all' {
-  const branchId = Number(sessionStorage.getItem('adminSelectedBranchId'));
-  return Number.isInteger(branchId) && branchId > 0 ? branchId : 'all';
-}
-
-function onBranchChange(): void {
-  if (selectedBranchId.value === 'all') {
-    sessionStorage.removeItem('adminSelectedBranchId');
-  } else {
-    sessionStorage.setItem('adminSelectedBranchId', String(selectedBranchId.value));
-  }
-  void fetchDashboardData();
-}
+watch(
+  () => branchStore.getPageBranch('dashboard'),
+  () => {
+    void fetchDashboardData();
+  },
+);
 
 async function fetchDashboardData(): Promise<void> {
   $q.loading.show({
@@ -226,6 +247,11 @@ async function fetchDashboardData(): Promise<void> {
       construction: data.construction || 0,
       totalDefects: data.totalDefects || 0,
       overallCompletionRate: data.overallCompletionRate || 0,
+      avgCompletionScore: data.avgCompletionScore ?? null,
+      scheduledThisMonth: data.scheduledThisMonth || 0,
+      pendingApprovalCount: data.pendingApprovalCount || 0,
+      completedCount: data.completedCount || 0,
+      deliverySuccessRate: data.deliverySuccessRate || 0,
       homeStatusBreakdown: data.homeStatusBreakdown || [],
       constructionStatusBreakdown: data.constructionStatusBreakdown || [],
     };
@@ -235,6 +261,8 @@ async function fetchDashboardData(): Promise<void> {
     topDefectCategories.value = Array.isArray(data.topDefectCategories) ? data.topDefectCategories : [];
     overallDefectResolution.value = data.overallDefectResolution;
     teamWorkloads.value = Array.isArray(data.teamWorkloads) ? data.teamWorkloads : [];
+    jobDrilldowns.value = Array.isArray(data.jobDrilldowns) ? data.jobDrilldowns : [];
+    operationalPipeline.value = data.operationalPipeline;
   } catch (err: unknown) {
     error.value = t('adminWork.main.loadError');
     console.error('fetchDashboardData error:', err);
@@ -244,6 +272,7 @@ async function fetchDashboardData(): Promise<void> {
 }
 
 onMounted(() => {
+  void branchStore.fetchBranches();
   void fetchDashboardData();
 });
 </script>

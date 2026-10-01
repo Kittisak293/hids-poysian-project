@@ -386,9 +386,9 @@
           {{ selectedTypeLabel }}
         </q-chip>
         <q-chip
-          v-if="selectedBranchId !== null"
+          v-if="selectedBranchId !== 'all'"
           removable
-          @remove="selectedBranchId = null"
+          @remove="selectedBranchId = 'all'"
           color="blue-1"
           text-color="primary"
           dense
@@ -484,9 +484,19 @@
 
             <q-card-actions class="row items-center q-px-md q-py-sm">
               <div class="row q-gutter-x-sm">
+                <q-badge
+                  v-if="task.branchName"
+                  color="indigo-1"
+                  text-color="indigo-9"
+                  class="tag-badge text-weight-medium"
+                >
+                  <q-icon name="business" size="14px" class="q-mr-xs text-indigo-7" />
+                  {{ task.branchName }}
+                </q-badge>
                 <q-badge color="grey-2" text-color="grey-8" class="tag-badge">
                   <q-icon name="apartment" size="14px" class="q-mr-xs" /> {{ task.type || t('adminWork.workList.condo') }}
                 </q-badge>
+                
                 <q-badge color="grey-2" text-color="grey-8" class="tag-badge">
                   <q-icon name="square_foot" size="14px" class="q-mr-xs" />
                   {{ task.area || '0' }} {{ t('adminWork.workList.sqm') }}
@@ -545,18 +555,33 @@ const branchStore = useBranchStore();
 const loading = ref<boolean>(false);
 const error = ref<string>('');
 
-// ตัวแปรสำหรับค้นหาและกรอง
-const searchTerm = ref('');
-const activeFilter = ref('all');
-const selectedType = ref('ทั้งหมด'); // ตัวเลือกประเภทบ้าน (เก็บเป็นชื่อไทยดิบ — หา nameEn จาก houseTypeStore ตอนแสดงผล)
-const selectedJobType = ref('ตรวจบ้าน'); // ตัวเลือกประเภทงาน
-const sortOrder = ref('desc'); // desc = ล่าสุด -> เก่า, asc = เก่า -> ล่าสุด
+// ตัวแปรสำหรับค้นหาและกรอง (อ่านค่าเริ่มต้นจาก URL Query Params)
+const initialQuery = route.query;
+const searchTerm = ref(typeof initialQuery.search === 'string' ? initialQuery.search : '');
+const activeFilter = ref(typeof initialQuery.status === 'string' ? initialQuery.status : 'all');
+const selectedType = ref(typeof initialQuery.type === 'string' ? initialQuery.type : 'ทั้งหมด'); // ตัวเลือกประเภทบ้าน
+const selectedJobType = ref(
+  initialQuery.jobType === 'construction'
+    ? 'งานก่อสร้าง'
+    : 'ตรวจบ้าน',
+);
+const sortOrder = ref(typeof initialQuery.sort === 'string' ? initialQuery.sort : 'desc');
+const currentPage = ref(
+  typeof initialQuery.page === 'string' && Number(initialQuery.page) > 0
+    ? Number(initialQuery.page)
+    : 1,
+);
 
-// รับตัวกรองจากหน้าอื่น (เช่น การ์ดสรุปในหน้าหลัก) ผ่าน query ?status=Active&jobType=home|construction
-const routeStatus = route.query.status;
-if (typeof routeStatus === 'string' && routeStatus) activeFilter.value = routeStatus;
-if (route.query.jobType === 'construction') selectedJobType.value = 'งานก่อสร้าง';
-else if (route.query.jobType === 'home') selectedJobType.value = 'ตรวจบ้าน';
+if (typeof initialQuery.branchId === 'string' && Number(initialQuery.branchId) > 0) {
+  branchStore.setPageBranch('work', Number(initialQuery.branchId));
+}
+
+const selectedBranchId = computed<number | 'all'>({
+  get: () => branchStore.getPageBranch('work'),
+  set: (val: number | 'all') => {
+    branchStore.setPageBranch('work', val);
+  },
+});
 
 // ตัวเลือกใน Dropdown
 const typeOptions = computed(() => {
@@ -579,7 +604,7 @@ const selectedTypeLabel = computed(() => {
   return pickLocalized(selectedType.value, match?.nameEn);
 });
 const branchOptions = computed(() => [
-  { label: t('common.branch.all'), value: null },
+  { label: t('common.branch.all'), value: 'all' as const },
   ...branchStore.branches.map((branch) => ({
     label: branch.branchName || t('common.branch.fallbackName', { id: branch.branchId }),
     value: branch.branchId,
@@ -592,7 +617,7 @@ const activeFilterCount = computed(() => {
   let count = 0;
   if (selectedType.value !== 'ทั้งหมด') count++;
   if (activeFilter.value !== 'all') count++;
-  if (selectedBranchId.value !== null) count++;
+  if (selectedBranchId.value !== 'all') count++;
   return count;
 });
 
@@ -629,7 +654,7 @@ function clearFilters() {
   selectedType.value = 'ทั้งหมด';
   activeFilter.value = 'all';
   sortOrder.value = 'desc';
-  selectedBranchId.value = null;
+  selectedBranchId.value = 'all';
 }
 
 const defectJobCount = computed(() => workStore.absoluteJobCounts.defect);
@@ -676,9 +701,7 @@ const kpiCompletedCount = computed(() => {
   return tasks.value.filter((t) => t.statusKey === 'Completed' || t.status.includes('เสร็จ')).length;
 });
 
-const currentPage = ref(1);
 const PAGE_SIZE = 20;
-const selectedBranchId = ref<number | null>(null);
 
 // ==========================================
 // 🎯 Interface สำหรับข้อมูล TaskItem
@@ -696,6 +719,7 @@ interface TaskItem {
   team: string;
   customer: string;
   date: string;
+  branchName?: string | null;
 }
 
 // ==========================================
@@ -778,6 +802,7 @@ const tasks = computed<TaskItem[]>(() => {
       team: t('adminWork.workList.unspecifiedTeam'), // Currently backend Work interface doesn't have team
       customer: work.customer?.fullName || t('adminWork.workList.unspecifiedCustomer'),
       date: latestActiveRoundDate || new Date().toISOString(),
+      branchName: work.branch?.branchName || null,
     };
   });
 });
@@ -797,29 +822,52 @@ const filters = computed(() => {
   return [{ label: t('adminWork.workList.allFilter'), value: 'all', count: allCount }, ...dynamicFilters];
 });
 
+function syncRouteQuery(): void {
+  const query: Record<string, string> = {};
+  if (searchTerm.value) query.search = searchTerm.value;
+  if (activeFilter.value !== 'all') query.status = activeFilter.value;
+  if (selectedType.value !== 'ทั้งหมด') query.type = selectedType.value;
+  if (sortOrder.value !== 'desc') query.sort = sortOrder.value;
+  if (currentPage.value > 1) query.page = String(currentPage.value);
+  if (selectedJobType.value === 'งานก่อสร้าง') query.jobType = 'construction';
+  else if (selectedJobType.value === 'ตรวจบ้าน') query.jobType = 'home';
+  if (typeof selectedBranchId.value === 'number' && selectedBranchId.value > 0) {
+    query.branchId = String(selectedBranchId.value);
+  }
+
+  void router.replace({ query });
+}
+
 let searchTimeout: ReturnType<typeof setTimeout>;
 watch(searchTerm, () => {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
     currentPage.value = 1;
+    syncRouteQuery();
     void fetchWorkList();
   }, 500);
 });
 
 watch([activeFilter, selectedType, sortOrder], () => {
   currentPage.value = 1;
+  syncRouteQuery();
   void fetchWorkList();
 });
 
-watch(selectedBranchId, () => {
-  currentPage.value = 1;
-  void workStore.fetchAbsoluteJobCounts(getBranchParams());
-  void fetchWorkList();
-});
+watch(
+  () => branchStore.getPageBranch('work'),
+  () => {
+    currentPage.value = 1;
+    syncRouteQuery();
+    void workStore.fetchAbsoluteJobCounts(getBranchParams());
+    void fetchWorkList();
+  },
+);
 
 // สลับแท็บ ตรวจบ้าน/ตรวจก่อสร้าง — โชว์ spinner เต็มจอตามไอคอนของแท็บที่กด ไม่มีข้อความ
 watch(selectedJobType, async (jobType) => {
   currentPage.value = 1;
+  syncRouteQuery();
   $q.loading.show({
     spinner: jobType === 'ตรวจบ้าน' ? homeInspectionSpinner : constructionSpinner,
     spinnerColor: 'primary',
@@ -948,7 +996,9 @@ onMounted(async (): Promise<void> => {
 });
 
 function getBranchParams(): { branchId?: number } {
-  return selectedBranchId.value ? { branchId: selectedBranchId.value } : {};
+  return typeof selectedBranchId.value === 'number' && selectedBranchId.value > 0
+    ? { branchId: selectedBranchId.value }
+    : {};
 }
 </script>
 
